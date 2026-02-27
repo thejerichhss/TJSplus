@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TJS+</title>
+    <style>
+        body { background: #000; color: #0f0; text-align: center; font-family: 'Courier New', monospace; padding: 20px; }
+        .container { max-width: 900px; margin: auto; border: 1px solid #0f0; padding: 20px; box-shadow: 0 0 15px #0f0; }
+        video { width: 100%; border: 1px solid #0f0; background: #111; }
+        .list-header { margin-top: 30px; border-bottom: 1px solid #0f0; padding-bottom: 10px; }
+        #btns { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; }
+        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; margin: 5px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #0f0; color: #000; box-shadow: 0 0 10px #0f0; }
+        .status { color: #555; font-size: 0.8em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TJS+ REASSEMBLER v1.0</h1>
+        <video id="player" controls controlsList="nodownload" oncontextmenu="return false;"></video>
+        
+        <h3 class="list-header">DECRYPTED MANIFEST:</h3>
+        <div id="btns"></div>
+        <div class="status">ENCRYPTED DATA STREAM ACTIVE via RENDER.COM</div>
+    </div>
+
+    <script>
+        const p = document.getElementById('player');
+        const b = document.getElementById('btns');
+
+        fetch('/api/list-vids')
+            .then(res => res.json())
+            .then(files => {
+                if (files.length === 0) {
+                    b.innerHTML = "<p>NO DATA DETECTED. CHECK ARCHIVE_ID.</p>";
+                    return;
+                }
+                files.forEach(file => {
+                    const btn = document.createElement('button');
+                    btn.innerText = "ACCESS: " + file.replace('.txt', '');
+                    btn.onclick = () => {
+                        p.src = "/stream/" + file;
+                        p.play();
+                    };
+                    b.appendChild(btn);
+                });
+            });
+    </script>
+</body>
+</html>
