@@ -1,44 +1,47 @@
 import os, requests
 from flask import Flask, render_template, Response, jsonify
-from pathlib import Path
 
-app = Flask(__name__) 
+app = Flask(__name__)
 
 ARCHIVE_ID = os.environ.get("ARCHIVE_ID", "").strip() 
-VIDEOS_DIR = os.environ.get("VIDEOS_DIR", "./videos")
 HEADERS = {'User-Agent': 'TJS-Plus-v1'}
 
-def get_mp4_files():
-    """Dynamically discover all .mp4 files in the videos directory"""
-    if not os.path.exists(VIDEOS_DIR):
+def get_archive_files():
+    """Fetch file list from Internet Archive Metadata API"""
+    metadata_url = f"https://archive.org{ARCHIVE_ID}"
+    try:
+        response = requests.get(metadata_url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Filter for .mp4 files in the 'files' list
+        return sorted([
+            f['name'] for f in data.get('files', []) 
+            if f.get('name', '').lower().endswith('.mp4')
+        ])
+    except Exception as e:
+        print(f"Error fetching metadata: {e}")
         return []
-    return sorted([f.name for f in Path(VIDEOS_DIR).glob("*.mp4")])
 
 @app.route('/')
-def index(): return render_template('index.html')
+def index(): 
+    return render_template('index.html')
 
 @app.route('/api/list-vids')
-def list_vids(): return jsonify(get_mp4_files())
+def list_vids(): 
+    return jsonify(get_archive_files())
 
 @app.route('/stream/<filename>')
 def stream_video(filename):
-    file_path = os.path.join(VIDEOS_DIR, filename)
-    
-    # Security check: ensure the file is in the videos directory
-    if not os.path.abspath(file_path).startswith(os.path.abspath(VIDEOS_DIR)):
-        return "Forbidden", 403
-    
-    if not os.path.exists(file_path):
-        return "Not Found", 404
+    target_url = f"https://archive.org/{ARCHIVE_ID}/{filename}"
     
     def generate():
-        with open(file_path, 'rb') as f:
-            while True:
-                chunk = f.read(262144)
-                if not chunk:
-                    break
+        # Proxy the stream from IA to the user
+        with requests.get(target_url, headers=HEADERS, stream=True) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=262144):
                 yield chunk
-    
+
     return Response(generate(), mimetype='video/mp4')
 
 if __name__ == '__main__':
