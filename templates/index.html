@@ -1,51 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TJS+</title>
     <style>
-        body { background: #000; color: #0f0; text-align: center; font-family: 'Courier New', monospace; padding: 20px; }
-        .container { max-width: 900px; margin: auto; border: 1px solid #0f0; padding: 20px; box-shadow: 0 0 15px #0f0; }
-        video { width: 100%; border: 1px solid #0f0; background: #111; }
-        .list-header { margin-top: 30px; border-bottom: 1px solid #0f0; padding-bottom: 10px; }
-        #btns { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; }
-        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; margin: 5px; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #0f0; color: #000; box-shadow: 0 0 10px #0f0; }
-        .status { color: #555; font-size: 0.8em; margin-top: 10px; }
+        :root { --primary: #007bff; --primary-glow: #0056b3; --bg: #000; --card-bg: #0a0c10; --text: #f0f0f0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; }
+        
+        nav { background: rgba(0,0,0,0.9); padding: 15px 5%; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; }
+        .logo { color: var(--primary); font-size: 1.8rem; font-weight: 900; letter-spacing: -1px; text-shadow: 0 0 15px var(--primary-glow); }
+
+        .player-zone { padding: 40px 5%; display: flex; flex-direction: column; align-items: center; background: radial-gradient(circle at top, #001a33 0%, #000 70%); }
+        #screen { width: 100%; max-width: 1100px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0,123,255,0.1); border: 1px solid #111; }
+        video { width: 100%; height: 100%; }
+
+        .loader { width: 50px; height: 50px; border: 3px solid #111; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: none; margin: 20px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .content { padding: 20px 5%; }
+        h2 { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
+        
+        .card { 
+            background: var(--card-bg); border-radius: 8px; padding: 10px; cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid #1a1a1a;
+        }
+        .card:hover { transform: translateY(-10px); border-color: var(--primary); box-shadow: 0 10px 20px rgba(0,123,255,0.2); }
+        .thumb { width: 100%; aspect-ratio: 16/9; background: linear-gradient(45deg, #000, #001a33); border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .thumb::after { content: '▶'; color: var(--primary); font-size: 2rem; opacity: 0.5; }
+        .card-name { font-size: 1rem; font-weight: 600; padding: 5px; color: #ccc; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>TJS+ REASSEMBLER v1.0</h1>
-        <video id="player" controls controlsList="nodownload" oncontextmenu="return false;">
-            <source src="" type="video/mp4; codecs='avc1.42E01E, mp4a.40.2'">
-        </video>
-        
-        <h3 class="list-header">DECRYPTED MANIFEST:</h3>
-        <div id="btns"></div>
-        <div class="status">ENCRYPTED DATA STREAM ACTIVE via RENDER.COM</div>
+
+<nav><div class="logo">TJS+</div></nav>
+
+<div class="player-zone">
+    <div id="screen">
+        <video id="v" controls controlsList="nodownload" oncontextmenu="return false;"></video>
     </div>
+    <div class="loader" id="load"></div>
+</div>
 
-    <script>
-        const p = document.getElementById('player');
-        const b = document.getElementById('btns');
+<div class="content">
+    <h2>Library Manifest</h2>
+    <div class="grid" id="grid"></div>
+</div>
 
-        fetch('/api/list-vids')
-            .then(res => res.json())
-            .then(files => {
-                if (files.length === 0) {
-                    b.innerHTML = "<p>NO DATA DETECTED. CHECK ARCHIVE_ID.</p>";
-                    return;
-                }
-                files.forEach(file => {
-                    const btn = document.createElement('button');
-                    btn.innerText = "ACCESS: " + file.replace('.txt', '');
-                    btn.onclick = () => {
-                        p.src = "/stream/" + file;
-                        p.play();
-                    };
-                    b.appendChild(btn);
-                });
+<script>
+    const v = document.getElementById('v');
+    const g = document.getElementById('grid');
+    const ld = document.getElementById('load');
+
+    fetch('/api/list-vids')
+        .then(r => r.json())
+        .then(files => {
+            files.forEach(f => {
+                const c = document.createElement('div');
+                c.className = 'card';
+                c.innerHTML = `<div class="thumb"></div><div class="card-name">${f.replace('.txt', '').toUpperCase()}</div>`;
+                
+                c.onclick = () => {
+                    ld.style.display = 'block';
+                    v.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    fetch("/stream/" + f)
+                        .then(res => res.blob())
+                        .then(b => {
+                            const url = URL.createObjectURL(new Blob([b], { type: 'video/mp4' }));
+                            v.src = url;
+                            v.play();
+                            ld.style.display = 'none';
+                        })
+                        .catch(() => {
+                            ld.style.display = 'none';
+                            alert("STREAM_ERROR: Verify Archive ID");
+                        });
+                };
+                g.appendChild(c);
             });
-    </script>
+        });
+</script>
 </body>
 </html>
