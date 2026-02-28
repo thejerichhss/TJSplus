@@ -28,7 +28,6 @@ def stream_video(filename):
             for chunk in r.iter_content(chunk_size=131072): # 128KB
                 if chunk:
                     clean_text = chunk.decode('utf-8', errors='ignore')
-                    # Keep only hex characters
                     hex_cache += re.sub(r'[^0-9a-fA-F]', '', clean_text)
                     
                     if len(hex_cache) >= 2:
