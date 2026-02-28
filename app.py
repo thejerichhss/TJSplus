@@ -16,28 +16,20 @@ def list_vids(): return jsonify([f for f in VIDEO_FILES if f])
 @app.route('/stream/<filename>')
 def stream_video(filename):
     def generate():
-        url = f"https://archive.org{ARCHIVE_ID}/{filename}"
+        url = f"https://archive.org/{ARCHIVE_ID}/{filename}"
+        # Using a smaller initial chunk to trigger the player faster
         with requests.get(url, headers=HEADERS, stream=True) as r:
             hex_cache = ""
-            first_chunk = True
-            for chunk in r.iter_content(chunk_size=131072):
+            for chunk in r.iter_content(chunk_size=65536): # 64KB chunks
                 if chunk:
-                    # 1. Clean the text (Remove ALL non-hex characters)
                     text = chunk.decode('utf-8', errors='ignore')
-                    clean = re.sub(r'[^0-9a-fA-F]', '', text)
-                    hex_cache += clean
+                    # Aggressive cleaning for the new True Hex format
+                    hex_cache += re.sub(r'[^0-9a-fA-F]', '', text)
                     
-                    # 2. Debug Log (Check Render Logs for this!)
-                    if first_chunk and len(hex_cache) >= 16:
-                        print(f"DEBUG: First 16 hex chars: {hex_cache[:16]}")
-                        first_chunk = False
-
-                    # 3. Decode and Yield
                     if len(hex_cache) >= 2:
                         usable = (len(hex_cache) // 2) * 2
                         yield binascii.unhexlify(hex_cache[:usable])
                         hex_cache = hex_cache[usable:]
-
     return Response(generate(), mimetype='video/mp4')
 
 if __name__ == '__main__':
