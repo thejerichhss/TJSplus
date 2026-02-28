@@ -49,7 +49,7 @@ def list_vids():
 
 @app.route('/stream/<filename>')
 def stream_video(filename):
-    target_url = f"https://archive.org/{ARCHIVE_ID}/{filename}"
+    target_url = f"https://archive.org{ARCHIVE_ID}/{filename}"
     
     def generate():
         # Proxy the stream from IA to the user
