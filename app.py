@@ -9,7 +9,6 @@ raw_id = os.environ.get("ARCHIVE_ID", "").strip()
 
 ARCHIVE_ID = re.sub(r'[^a-zA-Z0-9\-_]', '', raw_id)
 
-
 HEADERS = {'User-Agent': 'TJS-Plus-v1'}
 
 def get_archive_files():
