@@ -17,7 +17,7 @@ def list_vids():
 
 @app.route('/stream/<filename>')
 def stream_video(filename):
-    url = f"https://archive.org{ARCHIVE_ID}/{filename}"
+    url = f"https://archive.org/{ARCHIVE_ID}/{filename}"
     
     # Pre-fetch headers to get content length for the browser
     head = requests.head(url, headers=HEADERS)
