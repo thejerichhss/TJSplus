@@ -1,27 +1,15 @@
-import os, requests
-from flask import Flask, render_template, Response, jsonify
+import os
 
-app = Flask(__name__) 
+# Function to dynamically discover .mp4 files from a local directory
+def discover_mp4_files(directory):
+    mp4_files = []
+    for file in os.listdir(directory):
+        if file.endswith('.mp4'):
+            mp4_files.append(os.path.join(directory, file))
+    return mp4_files
 
-ARCHIVE_ID = os.environ.get("ARCHIVE_ID", "").strip() 
-VIDEO_FILES = os.environ.get("VIDEO_FILES", "").strip().split(',') 
-HEADERS = {'User-Agent': 'TJS-Plus-v1'}
+# Sample usage
+local_directory = './path/to/your/local/directory'
+video_files = discover_mp4_files(local_directory)
 
-@app.route('/')
-def index(): return render_template('index.html')
-
-@app.route('/api/list-vids')
-def list_vids(): return jsonify([f for f in VIDEO_FILES if f])
-
-@app.route('/stream/<filename>')
-def stream_video(filename):
-    url = f"https://archive.org/{ARCHIVE_ID}/{filename}"
-    def generate():
-        with requests.get(url, headers=HEADERS, stream=True) as r:
-            for chunk in r.iter_content(chunk_size=262144):
-                if chunk:
-                    yield chunk
-    return Response(generate(), mimetype='video/mp4')
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+print(video_files)  # This will print the list of discovered .mp4 files
