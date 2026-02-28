@@ -6,30 +6,32 @@
     <title>TJS+</title>
     <style>
         :root { --primary: #007bff; --primary-glow: #0056b3; --bg: #000; --card-bg: #0a0c10; --text: #f0f0f0; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; overflow-x: hidden; }
         
-        nav { background: rgba(0,0,0,0.9); padding: 15px 5%; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; }
+        nav { background: rgba(0,0,0,0.9); padding: 15px 5%; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; backdrop-filter: blur(10px); }
         .logo { color: var(--primary); font-size: 1.8rem; font-weight: 900; letter-spacing: -1px; text-shadow: 0 0 15px var(--primary-glow); }
 
         .player-zone { padding: 40px 5%; display: flex; flex-direction: column; align-items: center; background: radial-gradient(circle at top, #001a33 0%, #000 70%); }
-        #screen { width: 100%; max-width: 1100px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0,123,255,0.1); border: 1px solid #111; }
-        video { width: 100%; height: 100%; }
+        #screen { width: 100%; max-width: 1100px; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(0,123,255,0.1); border: 1px solid #111; position: relative; }
+        video { width: 100%; height: 100%; outline: none; }
 
         .loader { width: 50px; height: 50px; border: 3px solid #111; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: none; margin: 20px; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .content { padding: 20px 5%; }
-        h2 { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+        .content { padding: 20px 5%; min-height: 50vh; }
+        h2 { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; border-left: 3px solid var(--primary); padding-left: 15px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
         
         .card { 
             background: var(--card-bg); border-radius: 8px; padding: 10px; cursor: pointer; 
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid #1a1a1a;
+            position: relative; overflow: hidden;
         }
-        .card:hover { transform: translateY(-10px); border-color: var(--primary); box-shadow: 0 10px 20px rgba(0,123,255,0.2); }
+        .card:hover { transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 10px 25px rgba(0,123,255,0.2); }
         .thumb { width: 100%; aspect-ratio: 16/9; background: linear-gradient(45deg, #000, #001a33); border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-        .thumb::after { content: '▶'; color: var(--primary); font-size: 2rem; opacity: 0.5; }
-        .card-name { font-size: 1rem; font-weight: 600; padding: 5px; color: #ccc; }
+        .thumb::after { content: '▶'; color: var(--primary); font-size: 1.8rem; opacity: 0.6; transition: 0.3s; }
+        .card:hover .thumb::after { opacity: 1; transform: scale(1.2); }
+        .card-name { font-size: 0.9rem; font-weight: 500; padding: 5px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
@@ -38,13 +40,13 @@
 
 <div class="player-zone">
     <div id="screen">
-        <video id="v" controls controlsList="nodownload" oncontextmenu="return false;"></video>
+        <video id="v" controls controlsList="nodownload" oncontextmenu="return false;" poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="></video>
     </div>
     <div class="loader" id="load"></div>
 </div>
 
 <div class="content">
-    <h2>Library Manifest</h2>
+    <h2 id="manifest-title">Library Manifest</h2>
     <div class="grid" id="grid"></div>
 </div>
 
@@ -53,33 +55,52 @@
     const g = document.getElementById('grid');
     const ld = document.getElementById('load');
 
+    // Initialize Library from Flask API
     fetch('/api/list-vids')
         .then(r => r.json())
         .then(files => {
+            if (!files || files.length === 0) {
+                g.innerHTML = "<p style='color:#555'>No MP4 files found in this Archive ID.</p>";
+                return;
+            }
+
             files.forEach(f => {
                 const c = document.createElement('div');
                 c.className = 'card';
-                c.innerHTML = `<div class="thumb"></div><div class="card-name">${f.replace('.txt', '').toUpperCase()}</div>`;
+                
+                // Clean filename for display (removes .mp4 and cleans underscores)
+                const cleanName = f.replace(/\.mp4$/i, '').replace(/_/g, ' ');
+                
+                c.innerHTML = `
+                    <div class="thumb"></div>
+                    <div class="card-name" title="${cleanName}">${cleanName}</div>
+                `;
                 
                 c.onclick = () => {
+                    // Show loading state
                     ld.style.display = 'block';
-                    v.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    v.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
-                    fetch("/stream/" + f)
-                        .then(res => res.blob())
-                        .then(b => {
-                            const url = URL.createObjectURL(new Blob([b], { type: 'video/mp4' }));
-                            v.src = url;
-                            v.play();
-                            ld.style.display = 'none';
-                        })
-                        .catch(() => {
-                            ld.style.display = 'none';
-                            alert("STREAM_ERROR: Verify Archive ID");
-                        });
+                    // Set source directly to the proxy stream route
+                    // This allows for partial content seeking and instant play
+                    v.src = "/stream/" + encodeURIComponent(f);
+                    
+                    v.onloadeddata = () => {
+                        ld.style.display = 'none';
+                        v.play().catch(e => console.log("Autoplay blocked, user interaction required."));
+                    };
+
+                    v.onerror = () => {
+                        ld.style.display = 'none';
+                        alert("ERROR: Could not stream this file. Check Archive ID availability.");
+                    };
                 };
                 g.appendChild(c);
             });
+        })
+        .catch(err => {
+            g.innerHTML = "<p style='color:red'>FAILED to connect to backend.</p>";
+            console.error(err);
         });
 </script>
 </body>
