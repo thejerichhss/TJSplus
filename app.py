@@ -12,20 +12,31 @@ ARCHIVE_ID = re.sub(r'[^a-zA-Z0-9_-]+$', '', raw_id)
 HEADERS = {'User-Agent': 'TJS-Plus-v1'}
 
 def get_archive_files():
-    """Fetch file list from Internet Archive Metadata API"""
-    metadata_url = f"https://archive.org{ARCHIVE_ID}"
+    url = f"https://archive.org{ARCHIVE_ID}"
     try:
-        response = requests.get(metadata_url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+        r = requests.get(url, headers=HEADERS, timeout=10)
         
-        # Filter for .mp4 files in the 'files' list
-        return sorted([
-            f['name'] for f in data.get('files', []) 
-            if f.get('name', '').lower().endswith('.mp4')
-        ])
+        if r.status_code != 200:
+            print(f"!!! IA ERROR: Status {r.status_code}. Check if ID '{ARCHIVE_ID}' exists.")
+            return []
+
+        if not r.text.strip():
+            print(f"!!! IA ERROR: Received an empty response for ID '{ARCHIVE_ID}'.")
+            return []
+
+        data = r.json()
+        
+        if 'files' not in data:
+            print(f"!!! IA ERROR: No files found. Metadata says: {data.get('error', 'Unknown Error')}")
+            return []
+            
+        return sorted([f['name'] for f in data['files'] if f.get('name', '').lower().endswith('.mp4')])
+
+    except requests.exceptions.JSONDecodeError:
+        print(f"!!! CRITICAL: IA returned HTML instead of JSON. Raw response: {r.text[:200]}")
+        return []
     except Exception as e:
-        print(f"Error fetching metadata: {e}")
+        print(f"!!! UNKNOWN ERROR: {e}")
         return []
 
 @app.route('/')
