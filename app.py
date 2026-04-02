@@ -6,7 +6,7 @@ from flask import Flask, render_template, Response, jsonify
 app = Flask(__name__)
 
 raw_id = os.environ.get("ARCHIVE_ID", "").strip()
-ARCHIVE_ID = re.sub(r'[^a-zA-Z0-9\-_]', '', raw_id)
+ARCHIVE_ID = raw_id.split('/')[-1] if '/' in raw_id else raw_id
 HEADERS = {'User-Agent': 'TJS-Plus-v2'}
 
 def get_archive_files():
@@ -18,7 +18,8 @@ def get_archive_files():
         data = r.json()
         if 'files' not in data:
             return []
-        return sorted([f['name'] for f in data['files'] if f.get('name', '').lower().endswith('.mp4')])
+        vids = [f['name'] for f in data['files'] if f.get('name', '').lower().endswith('.mp4')]
+        return sorted(vids)
     except:
         return []
 
@@ -30,7 +31,7 @@ def index():
 def list_vids():
     return jsonify(get_archive_files())
 
-@app.route('/stream/<filename>')
+@app.route('/stream/<path:filename>')
 def stream_video(filename):
     target_url = f"https://archive.org{ARCHIVE_ID}/{filename}"
     def generate():
